@@ -34,27 +34,28 @@ export interface ViewConfig {
   view_layout?: {};
 }
 
-export interface ColumnViewConfig extends ViewConfig {
-  layout?: {
-    width?: number;
-    column_widths: string;
-    max_width?: number;
-    max_cols?: number;
-    min_height?: number;
-    rtl?: boolean;
-  };
-}
+// export interface ColumnViewConfig extends ViewConfig {
+//   layout?: {
+//     width?: number;
+//     column_widths: string;
+//     max_width?: number;
+//     max_cols?: number;
+//     min_height?: number;
+//     rtl?: boolean;
+//   };
+// }
 
 export interface GridViewConfig extends ViewConfig {
   layout?: {
+    style?: string;
     mediaquery?: Array<Record<string, any>>;
   };
 }
 
-export interface LayoutCardConfig {
-  cards?: Array<CardConfig>;
-  entities?: Array<CardConfig>;
-  layout_type?: string;
-  layout?: any;
-  layout_options?: any; // legacy
-}
+// export interface LayoutCardConfig {
+//   cards?: Array<CardConfig>;
+//   entities?: Array<CardConfig>;
+//   layout_type?: string;
+//   layout?: any;
+//   layout_options?: any; // legacy
+// }
