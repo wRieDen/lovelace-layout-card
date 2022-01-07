@@ -26,7 +26,9 @@ customElements.whenDefined("hui-view-editor").then(() => {
     const listBox = this.shadowRoot.querySelector(
       "paper-listbox[attr-for-selected=type]"
     );
-    if (!listBox || listBox.layoutCardPatch) return;
+    if (!listBox || listBox.layoutCardPatch) {
+      return;
+    }
 
     LAYOUT_TYPES.forEach((type) => {
       const el = document.createElement("paper-item");
@@ -59,7 +61,9 @@ customElements.whenDefined("hui-view-editor").then(() => {
 
     if (_changedProperties.has("_config")) {
       const layoutEditor = this.shadowRoot.querySelector("ha-yaml-editor");
-      if (layoutEditor) return;
+      if (layoutEditor) {
+        return;
+      }
       (layoutEditor as any).defaultValue = this._config.layout;
     }
   };

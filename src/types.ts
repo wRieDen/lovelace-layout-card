@@ -8,13 +8,8 @@ export interface LovelaceCard extends HTMLElement {
 export interface CardConfig {
   type: string;
   view_layout?: {
-    show?:
-      | "always"
-      | "never"
-      | {
-          mediaquery?: string;
-          sidebar?: string;
-        };
+    style?: string;
+    script?: string;
     column?: number;
   };
 }
@@ -23,7 +18,6 @@ export interface CardConfigGroup {
   card: LovelaceCard;
   config: CardConfig;
   index: number;
-  show?: boolean;
 }
 
 export interface ViewConfig {
@@ -32,6 +26,7 @@ export interface ViewConfig {
   cards?: Array<CardConfig>;
   view_layout?: {};
   layout?: {
+    script?: string;
     style?: string;
     mediaquery?: Array<Record<string, any>>;
   };

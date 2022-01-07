@@ -1,5 +1,7 @@
 import { css, html, LitElement, property } from "lit-element";
+import jQuery from "jquery";
 import { CardConfigGroup, CardConfig, LovelaceCard, ViewConfig } from "./types";
+import deepClone from 'deep-clone-simple';
 
 class GridLayout extends LitElement {
   //export class BaseLayout extends LitElement {
@@ -8,27 +10,9 @@ class GridLayout extends LitElement {
   @property() narrow: boolean;
   @property() hass;
   @property() lovelace: any;
-  @property() _editMode: boolean = false;
+  @property() _editMode = false;
   _editorLoaded = false;
-
   _config: ViewConfig;
-  _mediaQueries: Array<MediaQueryList | null> = [];
-
-  getCardElement(card: CardConfigGroup) {
-    if (!this.lovelace?.editMode) return card.card;
-    const wrapper = document.createElement("hui-card-options") as any;
-    wrapper.hass = this.hass;
-    wrapper.lovelace = this.lovelace;
-    wrapper.path = [this.index, card.index];
-    card.card.editMode = true;
-    wrapper.appendChild(card.card);
-    if (card.show === false) wrapper.style.border = "1px solid red";
-    return wrapper;
-  }
-
-  _addCard() {
-    this.dispatchEvent(new CustomEvent("ll-create-card"));
-  }
 
   async setConfig(config: ViewConfig) {
     this._config = { ...config };
@@ -36,17 +20,10 @@ class GridLayout extends LitElement {
       // Maybe avoid a bit of confusion...
       this._config.layout = this._config.view_layout;
     }
+    this._setGridStyles();
+  }
 
-    for (const card of this._config.cards) {
-      if (typeof card.view_layout?.show !== "string" && card.view_layout?.show?.mediaquery) {
-        const mq = window.matchMedia(`${card.view_layout.show.mediaquery}`);
-        this._mediaQueries.push(mq);
-        mq.addEventListener("change", () => this._placeCards());
-      } else {
-        this._mediaQueries.push(null);
-      }
-    }
-
+  async firstUpdated() {
     this._setGridStyles();
   }
 
@@ -64,61 +41,102 @@ class GridLayout extends LitElement {
       this.cards.forEach((c) => (c.editMode = this.lovelace?.editMode));
       this._editMode = this.lovelace?.editMode ?? false;
     }
+
     if (changedProperties.has("cards") || changedProperties.has("_editMode")) {
-      this._placeCards();
+      const root = this.shadowRoot.querySelector("#root");
+      while (root.firstChild) {
+        root.removeChild(root.firstChild);
+      }
+      const cards: CardConfigGroup[] = this.cards.map((card, index) => {
+        const config = this._config.cards[index];
+        return {
+          card,
+          config,
+          index
+        };
+      });
+
+      if (this._config.layout?.script) {
+        eval(this._config.layout?.script);
+      }
+
+      for (const card of cards) {
+        const div = document.createElement("div");
+        const divid = `layout-card${card.index}`;
+        
+        div.setAttribute("id", divid);
+        div.setAttribute("class", `layout-card`);
+  
+        for (const [key, value] of Object.entries(card.config?.view_layout ?? {})) {
+          if (key.startsWith("grid") || key === "place-self") {
+            div.style.setProperty(key, value as string);
+          }
+        }
+        
+        if (card.config?.view_layout?.style) {
+          const style = document.createElement("style");
+          style.innerHTML = card.config?.view_layout?.style.replace(/\$THIS/ig, '#' + divid);
+          div.appendChild(style);
+        }
+  
+        if (card.config?.view_layout?.script) {
+          const script = document.createElement("script");
+          script.innerHTML = card.config?.view_layout?.script.replace(/\$THIS/ig, divid);
+          div.appendChild(script);
+        }
+  
+        const divsub = document.createElement("div");
+        divsub.setAttribute("id", divid+'-sub');
+        divsub.setAttribute("class", `layout-card-sub`);
+  
+        const divcontent = document.createElement("div");
+        divcontent.setAttribute("id", divid+'-content');
+        divcontent.setAttribute("class", `layout-card-content`);
+        
+  
+        if (!this.lovelace?.editMode) {
+          divcontent.appendChild(card.card);
+        } else {
+          const wrapper = document.createElement("hui-card-options") as any;
+          wrapper.hass = this.hass;
+          wrapper.lovelace = this.lovelace;
+          wrapper.path = [this.index, card.index];
+          card.card.editMode = true;
+          wrapper.appendChild(card.card);
+          divcontent.appendChild(wrapper);
+        }
+
+        divsub.appendChild(divcontent)
+        div.appendChild(divsub)
+        root.appendChild(div);
+        //console.dir(div);
+        //console.log(div);
+      }
     }
   }
 
-  async firstUpdated() {
-    this._setGridStyles();
-  }
+
 
   _setGridStyles() {
     const root = this.shadowRoot.querySelector("#root") as HTMLElement;
     console.log(root);
     if (root) {
+      //root.setAttribute("id", "layout-root");
       root.setAttribute("class", "layout-root");
-      if (this._config.layout) {
+      if (this._config.layout?.style) {
         const style = document.createElement("style");
         style.innerHTML = this._config.layout.style;
         root.parentNode.insertBefore(style, root);
       }
+      
     }
   }
 
-  _shouldShow(card: LovelaceCard, config: CardConfig, index: number) {
-    if (config.view_layout?.show === "always") return true;
-    if (config.view_layout?.show === "never") return false;
-    if (config.view_layout?.show?.sidebar === "shown" && (this.hass?.dockedSidebar === "auto" || this.narrow)) return false;
-    if (config.view_layout?.show?.sidebar === "hidden" && this.hass?.dockedSidebar === "docked" && !this.narrow) return false;
 
-    const mq = this._mediaQueries[index];
-    if (!mq) return true;
-    if (mq.matches) return true;
-    return false;
+  _addCard() {
+    this.dispatchEvent(new CustomEvent("ll-create-card"));
   }
 
-  _placeCards() {
-    const root = this.shadowRoot.querySelector("#root");
-    while (root.firstChild) root.removeChild(root.firstChild);
-    let cards: CardConfigGroup[] = this.cards.map((card, index) => {
-      const config = this._config.cards[index];
-      return {
-        card,
-        config,
-        index,
-        show: this._shouldShow(card, config, index)
-      };
-    });
-
-    for (const card of cards.filter((c) => this.lovelace?.editMode || c.show)) {
-      const el = this.getCardElement(card);
-      for (const [key, value] of Object.entries(card.config?.view_layout ?? {})) {
-        if (key.startsWith("grid") || key === "place-self") el.style.setProperty(key, value as string);
-      }
-      root.appendChild(el);
-    }
-  }
 
   render() {
     if (!this.lovelace?.editMode === true) {
