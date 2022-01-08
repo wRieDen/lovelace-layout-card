@@ -1,9 +1,4 @@
-export interface LovelaceCard extends HTMLElement {
-  hass: any;
-  editMode?: boolean;
-  setConfig(config: any): void;
-  getCardSize?(): Promise<number> | number;
-}
+import { LovelaceCard } from 'custom-card-helpers';
 
 export interface CardConfig {
   type: string;
@@ -18,6 +13,7 @@ export interface CardConfigGroup {
   card: LovelaceCard;
   config: CardConfig;
   index: number;
+  generated: boolean;
 }
 
 export interface ViewConfig {
@@ -28,6 +24,8 @@ export interface ViewConfig {
   layout?: {
     script?: string;
     style?: string;
+    edit_style?: string;
+    edit_top_style?: string;
     mediaquery?: Array<Record<string, any>>;
   };
 }

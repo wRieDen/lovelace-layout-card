@@ -28,6 +28,7 @@
     "typescript": "^4.3.4"
   },
   "dependencies": {
+    "custom-card-helpers": "^1.8.0",
     "deep-clone-simple": "^1.1.1",
     "jquery": "^3.6.0",
     "lit-element": "^2.5.1",

@@ -1,7 +1,10 @@
-import { css, html, LitElement, property } from "lit-element";
+import { css, LitElement, html, customElement, property, TemplateResult, PropertyValues, state } from 'lit-element';
+
 import jQuery from "jquery";
-import { CardConfigGroup, CardConfig, LovelaceCard, ViewConfig } from "./types";
+import { CardConfigGroup, CardConfig, ViewConfig } from "./types";
+import { computeCardSize, HomeAssistant, LovelaceCard } from 'custom-card-helpers';
 import deepClone from 'deep-clone-simple';
+import 'custom-card-helpers';
 
 class GridLayout extends LitElement {
   //export class BaseLayout extends LitElement {
@@ -11,8 +14,27 @@ class GridLayout extends LitElement {
   @property() hass;
   @property() lovelace: any;
   @property() _editMode = false;
+  @state() private _helpers?: any;
+
+  
+
   _editorLoaded = false;
   _config: ViewConfig;
+  cardarr: CardConfigGroup[] = [];
+
+  constructor(){
+    super();
+
+    this.addEventListener("ll-rebuild", () => {
+      console.log("layout-rebuild")
+    });
+
+  }
+
+  testfunc(a){
+    console.log("testfunc called");
+    console.log(a);
+  }
 
   async setConfig(config: ViewConfig) {
     this._config = { ...config };
@@ -27,7 +49,75 @@ class GridLayout extends LitElement {
     this._setGridStyles();
   }
 
+  protected shouldUpdate(changedProps: PropertyValues): boolean {
+    // if (!this._initialized) {
+    //   this._initialize();
+    // }
+
+    if (changedProps.has('_config')) {
+      return true;
+    }
+
+    if (this._config) {
+      const oldHass = changedProps.get('hass') as HomeAssistant | undefined;
+
+      if (oldHass) {
+        for (var state in oldHass.states) {
+          if (Boolean(this.hass && oldHass.states[state] !== this.hass.states[state])) {
+            console.log(state)
+            return true;
+          }
+        }
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  
+  addCard(config: any){
+    var c = this._helpers.createCardElement(config)
+    c.hass = this.hass
+
+    c.addEventListener("ll-rebuild", (ev) => {
+      ev.stopPropagation();
+      this.testfunc("got ll")
+    });
+
+    this.cardarr.push({
+      card: c,
+      config: config,
+      index: this.cardarr.length,
+      generated: true,
+    })
+
+  }
+
   async updated(changedProperties: Map<string, any>) {
+    if (!this._helpers) {
+      this._helpers = await (window as any).loadCardHelpers();
+    }
+
+    console.log("updated:")
+    console.log(changedProperties)
+
+    // if (
+    //   !this._cards ||
+    //   (!changedProperties.has("hass") && !changedProperties.has("editMode"))
+    // ) {
+    //   return;
+    // }
+
+    for (const element of this.cardarr) {
+      if (this.hass) {
+        element.card.hass = this.hass;
+      }
+      if (this._editMode !== undefined) {
+        element.card.editMode = this._editMode;
+      }
+    }
+
     if (changedProperties.has("lovelace") && this.lovelace?.editMode != changedProperties.get("lovelace")?.editMode) {
       if (this.lovelace?.editMode && !this._editorLoaded) {
         this._editorLoaded = true;
@@ -40,6 +130,8 @@ class GridLayout extends LitElement {
       }
       this.cards.forEach((c) => (c.editMode = this.lovelace?.editMode));
       this._editMode = this.lovelace?.editMode ?? false;
+      
+      console.dir(this.cards)
     }
 
     if (changedProperties.has("cards") || changedProperties.has("_editMode")) {
@@ -47,20 +139,29 @@ class GridLayout extends LitElement {
       while (root.firstChild) {
         root.removeChild(root.firstChild);
       }
-      const cards: CardConfigGroup[] = this.cards.map((card, index) => {
-        const config = this._config.cards[index];
-        return {
-          card,
-          config,
-          index
-        };
-      });
+
+      this.cardarr = []
+      for(var card of this.cards){
+        var index = this.cardarr.length;
+
+        this.cardarr.push({
+          card: card,
+          config: this._config.cards[index],
+          index: index,
+          generated: false
+        })
+      }
 
       if (this._config.layout?.script) {
         eval(this._config.layout?.script);
       }
 
-      for (const card of cards) {
+
+
+
+
+
+      for (const card of this.cardarr) {
         const div = document.createElement("div");
         const divid = `layout-card${card.index}`;
         
@@ -85,36 +186,70 @@ class GridLayout extends LitElement {
           div.appendChild(script);
         }
   
-        const divsub = document.createElement("div");
-        divsub.setAttribute("id", divid+'-sub');
-        divsub.setAttribute("class", `layout-card-sub`);
-  
         const divcontent = document.createElement("div");
         divcontent.setAttribute("id", divid+'-content');
         divcontent.setAttribute("class", `layout-card-content`);
         
-  
-        if (!this.lovelace?.editMode) {
+        if (card.generated) {
+          divcontent.classList.add(`generated-card`);
+          div.classList.add(`generated-card`);
+        }
+        
+        if (this.lovelace?.editMode ) {
+          divcontent.classList.add(`edit-mode-card`);
+          div.classList.add(`edit-mode-card`);  
+        }
+
+        if (!this.lovelace?.editMode || card.generated) {
           divcontent.appendChild(card.card);
         } else {
           const wrapper = document.createElement("hui-card-options") as any;
           wrapper.hass = this.hass;
           wrapper.lovelace = this.lovelace;
           wrapper.path = [this.index, card.index];
+          this.waitForShadow(wrapper)
+
           card.card.editMode = true;
           wrapper.appendChild(card.card);
           divcontent.appendChild(wrapper);
+          
         }
 
-        divsub.appendChild(divcontent)
-        div.appendChild(divsub)
+        div.appendChild(divcontent)
         root.appendChild(div);
-        //console.dir(div);
-        //console.log(div);
       }
     }
   }
 
+  waitForShadow(wrapper){
+    var self=this;
+    if(wrapper.shadowRoot){
+        console.log("got shadow")
+        console.log(wrapper.shadowRoot)
+
+        if (this._config?.layout?.edit_top_style) {
+          const style = document.createElement("style");
+          style.innerHTML = this._config?.layout?.edit_top_style;
+          wrapper.shadowRoot.appendChild(style);
+        }        
+
+        var actioncard = wrapper.shadowRoot.querySelector('ha-card');
+        console.log(actioncard)
+
+        if (this._config?.layout?.edit_style) {
+          const style = document.createElement("style");
+          style.innerHTML = this._config?.layout?.edit_style;
+          actioncard.appendChild(style);
+        }
+    }
+
+
+    else{
+        setTimeout(function() {
+          self.waitForShadow(wrapper);
+      }, 250);
+    }
+  }
 
 
   _setGridStyles() {
@@ -151,35 +286,6 @@ class GridLayout extends LitElement {
 
     return html` <div id="root"></div>
       ${fab}`;
-  }
-
-  static get styles() {
-    return [
-      css`
-        ha-fab {
-          position: sticky;
-          float: right;
-          right: calc(16px + env(safe-area-inset-right));
-          bottom: calc(16px + env(safe-area-inset-bottom));
-          z-index: 1;
-        }
-
-        :host {
-          padding-top: 4px;
-          height: 100%;
-          box-sizing: border-box;
-        }
-        #root {
-          display: grid;
-          margin-left: 4px;
-          margin-right: 4px;
-          justify-content: stretch;
-        }
-        #root > * {
-          margin: var(--masonry-view-card-margin, 4px 4px 8px);
-        }
-      `
-    ];
   }
 }
 
