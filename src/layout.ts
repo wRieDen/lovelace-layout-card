@@ -44,13 +44,13 @@ class GridLayout extends LitElement {
       // Maybe avoid a bit of confusion...
       this._config.layout = this._config.view_layout;
     }
-    //this._initialize();
+    this._initialize();
   }
 
   protected shouldUpdate(changedProps: PropertyValues): boolean {
     if(!this._initialized) {
       this._initialize();
-      return false;
+      //return false;
     }
 
     if (changedProps.has("_config")) {
@@ -254,7 +254,6 @@ class GridLayout extends LitElement {
   waitForShadow(wrapper) {
     var self = this;
     if (wrapper.shadowRoot) {
-
       if (this._config?.layout?.edit_top_style) {
         const style = document.createElement("style");
         style.innerHTML = this._config?.layout?.edit_top_style;
@@ -316,13 +315,20 @@ class GridLayout extends LitElement {
     }
     this.cards.forEach((c) => (c.editMode = this.lovelace?.editMode));
     this._editMode = this.lovelace?.editMode ?? false;
+
+    console.dir(this.cards);
   }
 
   async _setGridStyles() {
     var root = null
-    while (!root) {
+
+    for (var i = 0; (i < 30) && (!root); i++) {
       root = this.shadowRoot.querySelector("#root") as HTMLElement;
       await sleep(100);
+    }
+
+    if(!root){
+      console.log('Could not find layout root object!')
     }
     //root.setAttribute("id", "layout-root");
     root.setAttribute("class", "layout-root");
