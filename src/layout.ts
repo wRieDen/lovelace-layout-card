@@ -50,7 +50,7 @@ class GridLayout extends LitElement {
   protected shouldUpdate(changedProps: PropertyValues): boolean {
     if(!this._initialized) {
       this._initialize();
-      return true;
+      return false;
     }
 
     if (changedProps.has("_config")) {
@@ -63,7 +63,6 @@ class GridLayout extends LitElement {
       if (oldHass) {
         for (var state in oldHass.states) {
           if (Boolean(this.hass && oldHass.states[state] !== this.hass.states[state])) {
-            //console.log(state)
             return true;
           }
         }
@@ -79,20 +78,6 @@ class GridLayout extends LitElement {
       this._initialize();
       return
     }
-
-    console.log("updated:");
-    console.log(changedProperties);
-
-
-
-    // for (const element of this.cardarr) {
-    //   if (this.hass) {
-    //     element.card.hass = this.hass;
-    //   }
-    //   if (this._editMode !== undefined) {
-    //     element.card.editMode = this._editMode;
-    //   }
-    // }
 
     if ((changedProperties.has("lovelace") && this.lovelace?.editMode != changedProperties.get("lovelace")?.editMode) || this.forceupdate) {
       this.updateEditMode();
@@ -142,7 +127,6 @@ class GridLayout extends LitElement {
       await this._setGridStyles();
 
       this._initialized = true;
-      console.log('init_done')
       this.forceupdate = true;
       this.requestUpdate();
     }
@@ -192,8 +176,6 @@ class GridLayout extends LitElement {
   createCardDiv(card: CardConfigGroup){
     const div = document.createElement("div");
     const divid = `layout-card${card.index}`;
-
-    console.log(['created card:', card])
 
     div.setAttribute("id", divid);
     div.setAttribute("class", `layout-card`);
@@ -272,8 +254,6 @@ class GridLayout extends LitElement {
   waitForShadow(wrapper) {
     var self = this;
     if (wrapper.shadowRoot) {
-      //console.log("got shadow")
-      //console.log(wrapper.shadowRoot)
 
       if (this._config?.layout?.edit_top_style) {
         const style = document.createElement("style");
@@ -282,7 +262,6 @@ class GridLayout extends LitElement {
       }
 
       var actioncard = wrapper.shadowRoot.querySelector("ha-card");
-      //console.log(actioncard)
 
       if (this._config?.layout?.edit_style) {
         const style = document.createElement("style");
@@ -321,22 +300,6 @@ class GridLayout extends LitElement {
 
     if (this._config.layout?.script) {
       eval(this._config.layout?.script);
-
-      // (async () => {
-      //   let file = '/local/layout/imports.js';
-      //   const f = await import(file);
-      //   return f;
-      // })().then(f => {
-      //   console.log(f);
-      //   const s = new f.default();
-      //   s.run();
-      //   console.log(s);
-      //   eval(this._config.layout?.script);
-      // })
-      //   .catch(error => {
-      //     // Handle/report error
-      //     console.error(error);
-      //   });
     }
   }
 
@@ -353,8 +316,6 @@ class GridLayout extends LitElement {
     }
     this.cards.forEach((c) => (c.editMode = this.lovelace?.editMode));
     this._editMode = this.lovelace?.editMode ?? false;
-
-    console.dir(this.cards);
   }
 
   async _setGridStyles() {
