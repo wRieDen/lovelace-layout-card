@@ -23,6 +23,7 @@ export interface ViewConfig {
   view_layout?: {};
   layout?: {
     script?: string;
+    script_hass?: string;
     style?: string;
     edit_style?: string;
     edit_top_style?: string;
