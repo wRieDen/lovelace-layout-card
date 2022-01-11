@@ -100,6 +100,29 @@ class GridLayout extends LitElement {
     this.forceupdate = false;
   }
 
+  async placeStyle(element: Element, depth: number){
+    for (var time = 1000; time > 0 && depth == 0 && element.children.length == 0; time=time-100){
+      sleep(100);
+    }
+
+    for(var child of element.children) {
+      this.placeStyle(child, depth)
+    }
+
+    var shadow = element.shadowRoot;
+    if (!!shadow) {
+      this.placeStyle(shadow as any, depth + 1);
+      
+      if (this._config?.layout?.style) {
+        const style = document.createElement("style");
+        style.innerHTML = this._config?.layout?.style;
+        shadow.appendChild(style);
+      }
+
+    }
+  }
+
+
 
   render() {
     if (!this.lovelace?.editMode === true) {
@@ -233,6 +256,12 @@ class GridLayout extends LitElement {
   addCardNode(card: CardConfigGroup) {
     const root = this.shadowRoot.querySelector("#root");
     root.appendChild(this.createCardDiv(card));
+
+    var self = this;
+    setTimeout(function () {
+      self.placeStyle(card.card, 0);
+    }, 0);
+
   }
 
   replaceCardNode(card: CardConfigGroup){
@@ -315,8 +344,6 @@ class GridLayout extends LitElement {
     }
     this.cards.forEach((c) => (c.editMode = this.lovelace?.editMode));
     this._editMode = this.lovelace?.editMode ?? false;
-
-    console.dir(this.cards);
   }
 
   async _setGridStyles() {
