@@ -30,6 +30,10 @@ class GridLayout extends LitElement {
   ext: any;
   forceupdate = false;
 
+  areas: any;
+  devices: any;
+  entities: any;
+  
   constructor() {
     super();
 
@@ -84,7 +88,7 @@ class GridLayout extends LitElement {
     }
 
     if (changedProperties.has("cards") || changedProperties.has("_editMode") || this.forceupdate) {
-      this.rebuildGrid();
+      await this.rebuildGrid();
     }
 
     if (changedProperties.has("hass") || this.forceupdate) {
@@ -304,7 +308,7 @@ class GridLayout extends LitElement {
   }
 
 
-  rebuildGrid(){
+  async rebuildGrid(){
     const root = this.shadowRoot.querySelector("#root");
     while (root.firstChild) {
       root.removeChild(root.firstChild);
@@ -325,6 +329,12 @@ class GridLayout extends LitElement {
     for (const card of this.cardarr) {
       this.addCardNode(card);
     }
+
+    [this.areas, this.devices, this.entities] = await Promise.all([
+      this.hass.callWS({ type: "config/area_registry/list" }),
+      this.hass.callWS({ type: "config/device_registry/list" }),
+      this.hass.callWS({ type: "config/entity_registry/list" }),
+    ]);
 
     if (this._config.layout?.script) {
       eval(this._config.layout?.script);
